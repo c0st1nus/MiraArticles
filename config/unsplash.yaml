@@ -1,0 +1,17 @@
+# Unsplash Search API defaults — https://unsplash.com/documentation#search-photos
+
+search:
+  per_page: 1
+  order_by: relevant
+  content_filter: high
+  orientation: landscape
+
+# UTM for attribution links (Unsplash API guidelines)
+utm:
+  source: miraarticles
+  medium: referral
+
+# Query building from news draft
+query:
+  max_keywords: 3
+  fallback: technology abstract minimal

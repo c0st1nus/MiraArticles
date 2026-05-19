@@ -1,0 +1,46 @@
+# Целевые сабреддиты MiraArticles
+# ВАЖНО: не публиковать один и тот же пост во все сабы. Ротация: 1 пост / цикл (5ч) → 1 саб.
+
+subreddits:
+  - name: programming
+    url: https://www.reddit.com/r/programming/
+    themes: [languages, tooling, software engineering, papers]
+  - name: linux
+    url: https://www.reddit.com/r/linux/
+    themes: [kernel, distros, drivers, desktop/server linux]
+  - name: opensource
+    url: https://www.reddit.com/r/opensource/
+    themes: [licenses, FOSS projects, foundations, governance]
+  - name: technology
+    url: https://www.reddit.com/r/technology/
+    themes: [broad tech industry, policy, gadgets, big tech]
+  - name: sysadmin
+    url: https://www.reddit.com/r/sysadmin/
+    themes: [enterprise IT, outages, patching, workplace]
+  - name: devops
+    url: https://www.reddit.com/r/devops/
+    themes: [cicd, kubernetes, terraform, sre, incidents]
+  - name: netsec
+    url: https://www.reddit.com/r/netsec/
+    themes: [vulnerabilities, exploits, malware analysis, advisories]
+  - name: selfhosted
+    url: https://www.reddit.com/r/selfhosted/
+    themes: [homelab, docker, self-hosted apps, privacy stack]
+
+# Риск promo/AI для автопоста с реф-ссылкой (субъективно, проверить sidebar)
+risk_promo:
+  low: [selfhosted]
+  medium: [linux, opensource, devops]
+  high: [sysadmin, programming]
+  very_high: [technology, netsec]
+
+# Рекомендуемый порядок включения autopost (после ручных тестов)
+rollout_order:
+  - selfhosted
+  - linux
+  - opensource
+  - devops
+  - sysadmin
+  - programming
+  - netsec
+  - technology

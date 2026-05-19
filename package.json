@@ -2,13 +2,19 @@
   "name": "MiraArticles",
   "version": "1.0.50",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.ts"
+    "test": "bun test",
+    "dev": "bun run --watch src/index.ts",
+    "test:x": "bun run scripts/test-x-post.ts",
+    "telegram:login": "bun run scripts/telegram-login.ts",
+    "test:mira": "bun run scripts/test-mira-prompt.ts"
   },
   "dependencies": {
-    "elysia": "latest"
+    "elysia": "latest",
+    "oauth-1.0a": "^2.2.6",
+    "telegram": "^2.26.22"
   },
   "devDependencies": {
+    "@types/node": "^25.9.0",
     "bun-types": "latest"
   },
   "module": "src/index.js"

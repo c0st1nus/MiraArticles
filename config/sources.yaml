@@ -1,0 +1,94 @@
+# Источники новостей для ingest (RSS/API). Язык не важен — дальше обрабатывает Mira.
+# Полная таблица и лаги: docs/news-sources.md
+
+tiers:
+  # Tier S — обычно быстрее mainstream (минуты–часы)
+  fast:
+    - id: opennet_all
+      url: https://www.opennet.ru/opennews/opennews_all_noadv.rss
+      lang: ru
+      tags: [linux, security, opensource, sysadmin]
+    - id: opennet_mini
+      url: https://www.opennet.ru/opennews/opennews_mini_noadv.rss
+      lang: ru
+      tags: [security, breaking]
+    - id: hn_newest
+      url: https://hnrss.org/newest
+      lang: en
+      tags: [programming, technology]
+    - id: lobsters_newest
+      url: https://lobste.rs/newest.rss
+      lang: en
+      tags: [programming, security, linux]
+    - id: techmeme
+      url: https://www.techmeme.com/feed.xml
+      lang: en
+      tags: [technology]
+    - id: phoronix
+      url: https://www.phoronix.com/rss.php
+      lang: en
+      tags: [linux]
+    - id: bleeping_security
+      url: https://www.bleepingcomputer.com/feed/
+      lang: en
+      tags: [netsec, sysadmin]
+    - id: thehackernews
+      url: https://feeds.feedburner.com/TheHackersNews
+      lang: en
+      tags: [netsec]
+    - id: register_security
+      url: https://www.theregister.com/security/headlines.atom
+      lang: en
+      tags: [netsec, sysadmin]
+
+  # Tier A — CVE/advisories (для r/netsec, r/sysadmin)
+  security:
+    - id: cisa_kev
+      url: https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
+      type: json
+      tags: [netsec, sysadmin]
+    - id: github_advisories
+      url: https://github.com/advisories?query=type%3Areviewed
+      type: manual_or_api
+      note: использовать GitHub Security Advisories API, не HTML scrape
+      tags: [netsec, devops, programming]
+
+  # Tier B — качество выше скорости (часы)
+  quality:
+    - id: lwn_headlines
+      url: https://lwn.net/headlines/rss
+      lang: en
+      tags: [linux, programming]
+    - id: ars_technica
+      url: https://feeds.arstechnica.com/arstechnica/index
+      lang: en
+      tags: [technology, programming]
+    - id: soylentnews
+      url: http://soylentnews.org/index.rss
+      lang: en
+      tags: [technology, linux]
+
+  # Официальные (часто первыми для своего продукта)
+  vendor:
+    - id: github_blog
+      url: https://github.blog/feed/
+      tags: [devops, programming]
+    - id: kubernetes_blog
+      url: https://kubernetes.io/feed.xml
+      tags: [devops]
+    - id: docker_blog
+      url: https://www.docker.com/blog/feed/
+      tags: [devops, selfhosted]
+
+# Маппинг: тег источника → приоритетный саб (если score равный)
+route_to_subreddit:
+  netsec: netsec
+  security: netsec
+  linux: linux
+  opensource: opensource
+  devops: devops
+  selfhosted: selfhosted
+  sysadmin: sysadmin
+  programming: programming
+  technology: technology
+  default: linux
