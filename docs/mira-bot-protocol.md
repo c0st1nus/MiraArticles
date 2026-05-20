@@ -48,7 +48,7 @@ URL: ...
 Scheduler
   → GramJS client (StringSession from token/telegram.session)
   → messages.SendMessage(peer=@mira, message=prompt)
-  → wait NewMessage (correlation: after requestId / timeout 120s)
+  → wait NewMessage fromUsers + backup getMessages (poll 2.5s, timeout 180s)
   → parse text + ReplyInlineMarkup
   → optional: click callback button (state machine)
   → return draftText
@@ -57,6 +57,10 @@ Scheduler
 - Библиотека: [GramJS](https://gram.js.org/) (`telegram` npm).
 - Один активный запрос к боту за раз.
 - `FLOOD_WAIT`: sleep(seconds) + retry once.
+- Username **mira** (4 символа): `client.getEntity("mira")` в GramJS **не работает** — в коде `resolveBotUser()` → `contacts.ResolveUsername`.
+- События: `NewMessage({ fromUsers: [botId] })`, не `chats: [User]`.
+- Backup poll `getMessages` — интервал **2.5s** (не 400ms): иначе `FLOOD_WAIT` на `GetHistory`.
+- Полная шпаргалка POC: [`telegram-mira-poc.md`](telegram-mira-poc.md).
 
 ---
 
@@ -73,8 +77,16 @@ Scheduler
 ### 4.2 Промпт «IT news post»
 
 ```
-(пусто — заполнить)
+Вот пост:
+
+Linux 6.14-rc1 вышел — …
+[2–4 абзаца про RC, планировщик, сеть]
+Кто уже тестирует? …
+
+Короткий, живой, с вопросом в конце — Reddit такое любит 😎
 ```
+
+(Префикс «Вот пост:» и хвост с эмодзи — опционально режутся в `cleanDraftText`.)
 
 ### 4.3 Кнопки (если есть)
 
@@ -101,8 +113,9 @@ Scheduler
 
 | Симптом | Действие |
 |---------|----------|
-| Нет ответа 120s | fail cycle, log, skip publish |
-| FloodWaitError | sleep, retry |
+| Нет ответа 180s (`MIRA_RESPONSE_TIMEOUT_MS`) | fail cycle, log, skip publish |
+| FloodWaitError / GetHistory flood | увеличить `MIRA_POLL_INTERVAL_MS`; не poll чаще 2s |
+| `Cannot find entity "mira"` | `resolveBotUser` / проверить `MIRA_BOT_USERNAME` |
 | Session revoked | re-run `telegram-login.ts` |
 | Bot blocked | alert user |
 
@@ -113,11 +126,11 @@ Scheduler
 | Этап | Статус |
 |------|--------|
 | `telegram.json` | ✅ создан |
-| `telegram.session` | ⏳ после первого логина |
+| `telegram.session` | ✅ после `telegram:login` |
 | Ручная разведка @mira | ✅ §2 |
-| POC `src/mira/client.ts` | ✅ фаза 1 |
+| POC `src/mira/client.ts` | ✅ live test 2026-05-20 |
 | `scripts/telegram-login.ts` | ✅ |
 | `scripts/test-mira-prompt.ts` | ✅ (`bun run test:mira`) |
 | `src/mira/parser.ts` + tests | ✅ (`bun test`) |
 
-После заполнения §2–4 обновить [`PLAN.md`](../PLAN.md) фазу 1.
+Фаза 1 **закрыта** — см. [`PLAN.md`](../PLAN.md), [`telegram-mira-poc.md`](telegram-mira-poc.md).

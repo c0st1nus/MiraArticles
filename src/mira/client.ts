@@ -17,6 +17,8 @@ export interface MiraPromptOptions {
   idleMs?: number;
   /** Max wait for any bot response (ms). */
   totalTimeoutMs?: number;
+  /** Backup poll interval for getMessages (ms); default matches idleMs. */
+  pollIntervalMs?: number;
   botUsername?: string;
 }
 
@@ -28,7 +30,9 @@ export interface MiraPromptResult {
 }
 
 const DEFAULT_IDLE_MS = 2500;
-const DEFAULT_TOTAL_TIMEOUT_MS = 120_000;
+const DEFAULT_TOTAL_TIMEOUT_MS = 180_000;
+/** Backup poll via getMessages; keep ≥ idleMs to avoid GetHistory FLOOD_WAIT. */
+const DEFAULT_POLL_INTERVAL_MS = 2500;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -75,12 +79,41 @@ export async function createMiraClient(): Promise<TelegramClient> {
   return client;
 }
 
-async function resolveBotPeer(
+/**
+ * Resolve @bot by username. GramJS getEntity() uses parseUsername() which
+ * rejects 4-character names (e.g. "mira"); MTProto ResolveUsername still works.
+ */
+export async function resolveBotUser(
   client: TelegramClient,
   username: string,
-): Promise<EntityLike> {
-  const entity = await withFloodRetry(() => client.getEntity(username));
-  return entity;
+): Promise<Api.User> {
+  const u = username.replace(/^@/, "").toLowerCase();
+
+  for (const candidate of [u, `@${u}`, `https://t.me/${u}`]) {
+    try {
+      const entity = await withFloodRetry(() => client.getEntity(candidate));
+      if (entity instanceof Api.User) return entity;
+    } catch {
+      // try next
+    }
+  }
+
+  const result = await withFloodRetry(() =>
+    client.invoke(new Api.contacts.ResolveUsername({ username: u })),
+  );
+
+  if (result.peer instanceof Api.PeerUser) {
+    const userId = result.peer.userId;
+    const user = result.users.find(
+      (x) => x instanceof Api.User && x.id.equals(userId),
+    );
+    if (user instanceof Api.User) return user;
+  }
+
+  throw new Error(
+    `Cannot resolve bot @${u}. Open https://t.me/${u} in Telegram, send /start once, ` +
+      "then retry. If the bot has another username, set MIRA_BOT_USERNAME.",
+  );
 }
 
 interface BotIncomingMessage {
@@ -96,9 +129,11 @@ async function waitForBotMessages(
   peer: EntityLike,
   botEntity: Api.User,
   afterMessageId: number,
-  options: Required<Pick<MiraPromptOptions, "idleMs" | "totalTimeoutMs">>,
+  options: Required<
+    Pick<MiraPromptOptions, "idleMs" | "totalTimeoutMs" | "pollIntervalMs">
+  >,
 ): Promise<BotIncomingMessage[]> {
-  const { idleMs, totalTimeoutMs } = options;
+  const { idleMs, totalTimeoutMs, pollIntervalMs } = options;
   const botId = botEntity.id.toString();
   const collected = new Map<number, BotIncomingMessage>();
   let lastActivityAt = Date.now();
@@ -162,7 +197,10 @@ async function waitForBotMessages(
       }
     };
 
-    client.addEventHandler(handler, new NewMessage({ chats: [peer] }));
+    client.addEventHandler(
+      handler,
+      new NewMessage({ fromUsers: [botEntity.id] }),
+    );
 
     const pollTimer = setInterval(async () => {
       try {
@@ -182,8 +220,26 @@ async function waitForBotMessages(
           finish(err instanceof Error ? err : new Error(String(err)));
         }
       }
-    }, 400);
+    }, pollIntervalMs);
   });
+}
+
+function pollIntervalFromEnv(idleMs: number): number {
+  const raw = process.env.MIRA_POLL_INTERVAL_MS?.trim();
+  if (raw) {
+    const n = Number.parseInt(raw, 10);
+    if (Number.isFinite(n) && n >= idleMs) return n;
+  }
+  return Math.max(idleMs, DEFAULT_POLL_INTERVAL_MS);
+}
+
+function totalTimeoutFromEnv(): number {
+  const raw = process.env.MIRA_RESPONSE_TIMEOUT_MS?.trim();
+  if (raw) {
+    const n = Number.parseInt(raw, 10);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return DEFAULT_TOTAL_TIMEOUT_MS;
 }
 
 export async function sendPromptToMira(
@@ -192,13 +248,15 @@ export async function sendPromptToMira(
   options: MiraPromptOptions = {},
 ): Promise<MiraPromptResult> {
   const idleMs = options.idleMs ?? DEFAULT_IDLE_MS;
-  const totalTimeoutMs = options.totalTimeoutMs ?? DEFAULT_TOTAL_TIMEOUT_MS;
+  const totalTimeoutMs = options.totalTimeoutMs ?? totalTimeoutFromEnv();
+  const pollIntervalMs =
+    options.pollIntervalMs ?? pollIntervalFromEnv(idleMs);
   const botUsername = (options.botUsername ?? getBotUsername()).replace(/^@/, "");
 
   await ensureConnected(client);
 
-  const peer = await resolveBotPeer(client, botUsername);
-  const botEntity = (await client.getEntity(botUsername)) as Api.User;
+  const botEntity = await resolveBotUser(client, botUsername);
+  const peer: EntityLike = botEntity;
 
   const sent = await withFloodRetry(() =>
     client.sendMessage(peer, { message: prompt }),
@@ -208,6 +266,7 @@ export async function sendPromptToMira(
   const rawMessages = await waitForBotMessages(client, peer, botEntity, afterId, {
     idleMs,
     totalTimeoutMs,
+    pollIntervalMs,
   });
 
   const messages = rawMessages.map((m) => parseMiraMessage(m));

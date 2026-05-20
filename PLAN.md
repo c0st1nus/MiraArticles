@@ -2,7 +2,7 @@
 
 Автоматизированный конвейер: **новости IT → запрос к боту Mira через Telegram MTProto → пост с дисклеймером → публикация в Reddit и X** по расписанию (каждые ~5 часов).
 
-> **Статус (2026-05-19):** Фаза 0 **закрыта**. Фаза 1 **код готов** (`src/mira/*`, `scripts/telegram-login.ts`) — осталось локально: `bun run telegram:login` + `bun run test:mira`. **Reddit** — OAuth работает. **X** — отложено (402). Дальше → фаза 2 в [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md).
+> **Статус (2026-05-20):** Фаза 0–1 **закрыты** (login + `test:mira` OK). Доки POC: [`docs/telegram-mira-poc.md`](docs/telegram-mira-poc.md). **Reddit** — OAuth готов. **X** — отложено (402). Дальше → фаза 2.
 
 ---
 
@@ -113,19 +113,19 @@ flowchart TB
 
 **Задачи**
 - [x] `token/telegram.json` — api_id / api_hash
-- [ ] Интерактивный логин → `token/telegram.session` — **`bun run telegram:login`** (локально, не в CI)
-- [ ] Отправка тестового промпта — **`bun run test:mira`** (после сессии)
+- [x] Интерактивный логин → `token/telegram.session` — `bun run telegram:login`
+- [x] Тестовый промпт @mira — `bun run test:mira` (проверено 2026-05-20)
 - [x] Парсер: текст, inline-кнопки — `src/mira/parser.ts` + `bun test`
-- [x] `FLOOD_WAIT` retry, streaming idle 2.5s, timeout 120s, 2FA в login-скрипте — `src/mira/client.ts`
+- [x] `resolveBotUser`, `FLOOD_WAIT` retry, streaming idle 2.5s, timeout 180s, 2FA — `src/mira/client.ts`
 
-**Артефакты (код):** `src/mira/client.ts`, `src/mira/parser.ts`, `scripts/telegram-login.ts`, `scripts/test-mira-prompt.ts`.
+**Артефакты:** `src/mira/*`, `scripts/telegram-login.ts`, `scripts/test-mira-prompt.ts`, [`docs/telegram-mira-poc.md`](docs/telegram-mira-poc.md).
+
+**Фаза 1 — DONE.**
 
 **Риски Telegram**
 - Автоматизация **user-аккаунта** — серая зона [ToS](https://telegram.org/tos) / [API ToS](https://core.telegram.org/api/terms): действия должны быть с **явного согласия владельца** аккаунта.
 - Не скрапить чужие данные; только диалог с ботом.
 - Лимиты: не чаще 1 целевого диалога / 5 ч; exponential backoff на flood.
-
-**Артефакты:** `src/mira/client.ts`, `src/mira/parser.ts`, интеграционный тест с mock-update.
 
 ---
 

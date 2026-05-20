@@ -26,8 +26,13 @@ console.log("Connecting to Telegram…");
 const client = await createMiraClient();
 
 try {
-  console.log("Sending test prompt to @mira (may take up to 120s)…");
-  const result = await sendPromptToMira(client, testPrompt);
+  const timeoutMs = Number(process.env.MIRA_RESPONSE_TIMEOUT_MS ?? "180000");
+  console.log(
+    `Sending test prompt to @mira (idle 2.5s, timeout ${timeoutMs / 1000}s; bot may stream 1–6 min)…`,
+  );
+  const result = await sendPromptToMira(client, testPrompt, {
+    totalTimeoutMs: timeoutMs,
+  });
   console.log("\n--- draftText ---\n");
   console.log(result.draftText);
   console.log("\n--- meta ---");

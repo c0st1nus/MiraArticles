@@ -15,7 +15,7 @@
 | Reddit OAuth | `token/reddit_token.json` (Devvit CLI), submit проверен → `u_c0s1nu7` |
 | X OAuth 1.0a | `token/x_token.json` — auth OK, **402 credits** → отложено |
 | Telegram | `token/telegram.json` (`api_id`, `api_hash`); сессия → `token/telegram.session` (см. §6 PLAN) |
-| Mira bot | [`mira-bot-protocol.md`](mira-bot-protocol.md) — шаблон; §2–4 заполнить вручную |
+| Mira bot POC | [`mira-bot-protocol.md`](mira-bot-protocol.md), [`telegram-mira-poc.md`](telegram-mira-poc.md) — **live test OK** |
 | Тест X | `bun run test:x` → `scripts/test-x-post.ts` |
 | Unsplash (опц.) | `src/media/`, [`unsplash.md`](unsplash.md) |
 
@@ -25,7 +25,17 @@
 
 - **X публикация** — Billing → Purchase credits; затем `X_ENABLED=true` и `test:x`
 - **r/programming** — в autopost **не включать** (ban LLM-written content)
-- Разведка **@mira** — чеклист [`mira-bot-protocol.md`](mira-bot-protocol.md) §2
+---
+
+## Фаза 1 (Telegram / @mira) — закрыта
+
+```bash
+bun run telegram:login   # один раз
+bun run test:mira        # промпт → draftText (~10–180s)
+bun test
+```
+
+См. [`telegram-mira-poc.md`](telegram-mira-poc.md) (GramJS quirks, env, FLOOD_WAIT).
 
 ---
 
@@ -40,8 +50,6 @@
 6. src/scheduler/cron.ts       — 5h, 1 sub per cycle, route по тегам
 7. src/publishers/x.ts         — заглушка if !X_ENABLED
 ```
-
-**Фаза 1 (локально):** `bun run telegram:login` → `bun run test:mira`
 
 Первый **e2e без Mira**: RSS → draft вручную в коде → Reddit `r/selfhosted` или `u_c0s1nu7`.  
 Потом подключить Mira. X — последним.
@@ -58,6 +66,8 @@ REDDIT_TOKEN_FILE=token/reddit_token.json
 REDDIT_USER_AGENT=MiraArticles/1.0 (by /u/c0s1nu7)
 CRON_INTERVAL_HOURS=5
 HUMAN_APPROVE=true          # первые недели
+MIRA_RESPONSE_TIMEOUT_MS=180000
+MIRA_POLL_INTERVAL_MS=2500
 ```
 
 ---
@@ -74,8 +84,9 @@ HUMAN_APPROVE=true          # первые недели
 
 ## Telegram (код)
 
-- `telegram` (GramJS), session file после login
-- Один диалог `/mira`, timeout 120s, flood wait
+- `telegram` (GramJS), `token/telegram.session` после login
+- `resolveBotUser()` для @mira (4-char username)
+- `sendPromptToMira`: events + poll 2.5s, timeout 180s
 
 ---
 
