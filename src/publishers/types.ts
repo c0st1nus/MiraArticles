@@ -13,6 +13,10 @@ export interface RedditSubmitInput {
   kind?: "self";
 }
 
+export interface XTweetInput {
+  text: string;
+}
+
 /** Minimal publisher interface — extended in phase 7 */
 export interface Publisher {
   publish(input: RedditSubmitInput): Promise<PublishResult>;

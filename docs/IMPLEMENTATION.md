@@ -1,6 +1,6 @@
 # Старт имплементации (следующий чат)
 
-Фаза 0–4 **закрыты** (65 tests). X **отложен** до покупки credits. Дальше: фаза 6 scheduler (`src/scheduler/cron.ts`).
+Фаза 0–5 **закрыты** (74 tests). Live X posting **заблокирован** API credits (402) — код готов, `X_ENABLED=false` по умолчанию. Дальше: фаза 6 scheduler (`src/scheduler/cron.ts`).
 
 ---
 
@@ -13,7 +13,8 @@
 | Сабы + rules | [`subreddit-rules.md`](subreddit-rules.md), [`config/subreddits.yaml`](../config/subreddits.yaml) |
 | Источники RSS | [`news-sources.md`](news-sources.md), [`config/sources.yaml`](../config/sources.yaml) |
 | Reddit OAuth | `token/reddit_token.json` (Devvit CLI), submit проверен → `u_c0s1nu7` |
-| X OAuth 1.0a | `token/x_token.json` — auth OK, **402 credits** → отложено |
+| X OAuth 1.0a | `token/x_token.json` — auth OK; live post **402 credits** |
+| X publisher (фаза 5) | `src/publishers/x-auth.ts`, `x.ts`, `publishDraftToX`, `scripts/test-x-post.ts`, `bun run x:test` |
 | Telegram | `token/telegram.json` (`api_id`, `api_hash`); сессия → `token/telegram.session` (см. §6 PLAN) |
 | Mira bot POC | [`mira-bot-protocol.md`](mira-bot-protocol.md), [`telegram-mira-poc.md`](telegram-mira-poc.md) — **live test OK** |
 | Ingest (фаза 2) | `src/config/load.ts`, `src/news/*` (RSS/JSON, dedup, scoring, router, aggregator), `scripts/test-ingest.ts` |
@@ -24,9 +25,9 @@
 
 ---
 
-## Отложено
+## Отложено (live only)
 
-- **X публикация** — Billing → Purchase credits; затем `X_ENABLED=true` и `test:x`
+- **X live posting** — Billing → Purchase credits; затем `X_ENABLED=true` и `bun run x:test`
 - **r/programming** — в autopost **не включать** (ban LLM-written content)
 ---
 
@@ -57,6 +58,29 @@ bun run reddit:test             # live → REDDIT_TEST_SR or u_c0s1nu7
 ```
 
 Первый live e2e: профиль `u_c0s1nu7`, затем `r/selfhosted` после ручной проверки.
+
+---
+
+## Фаза 5 (X publisher) — закрыта
+
+Модули:
+
+- `src/publishers/x-auth.ts` — `loadXCredentials()` из `X_TOKEN_FILE` (default `token/x_token.json`) или `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET`
+- `src/publishers/x.ts` — `postTweet` (OAuth 1.0a, `POST /2/tweets`), `publishDraftToX`
+- `src/publishers/x.test.ts` — mock fetch, без live API
+- `scripts/test-x-post.ts` — thin CLI → `postTweet`
+
+Guards (как Reddit): `X_ENABLED !== "true"` → skip; status `validated` / `pending_approve` (if `HUMAN_APPROVE`); `platform === "x"`; `body` required. Текст — только `draft.body` (ref link в disclosure pipeline, не в каждом твите).
+
+Post-submit: `insertPublished` (`subreddit: "x"`, `platform: "x"`), `updateDraftStatus` → `published`, `markPublished(draft.url)`.
+
+**Блокер live:** X API возвращает HTTP 402 без credits. Код и тесты готовы; включить после покупки credits.
+
+```bash
+bun test                    # includes x.test.ts
+bun run x:test              # live (needs token + credits + X_ENABLED not required for postTweet alone)
+X_ENABLED=true bun run x:test "optional text"
+```
 
 ---
 
@@ -99,11 +123,11 @@ bun run ingest:test   # live fetch + scoring; см. feed errors в stdout
 3. ~~src/publishers/reddit.ts~~ — ✅ фаза 4: types, reddit-auth, reddit, index
 4. ~~src/pipeline/~~            — ✅ фаза 3: prompt, disclosure, validator, sqlite
 5. src/scheduler/cron.ts       — 5h, 1 sub per cycle, route по тегам
-6. src/publishers/x.ts         — заглушка if !X_ENABLED
+6. ~~src/publishers/x.ts~~     — ✅ фаза 5: x-auth, x, publishDraftToX
 ```
 
 Первый **e2e без Mira**: RSS → draft вручную в коде → Reddit `r/selfhosted` или `u_c0s1nu7`.  
-Потом подключить Mira. X — последним.
+Потом подключить Mira.
 
 ---
 
@@ -156,7 +180,8 @@ bun run pipeline:test   # фаза 3 smoke (offline)
 bun run reddit:test --dry-run   # фаза 4 smoke (проверяет токен без реального поста)
 bun run reddit:test             # фаза 4 live (требует REDDIT_ENABLED=true)
 bun run dev
-bun run test:x          # после credits
+bun run x:test          # live postTweet (после credits)
+bun run test:x          # alias
 ```
 
 ---

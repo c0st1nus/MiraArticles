@@ -5,6 +5,7 @@
     "test": "bun test",
     "dev": "bun run --watch src/index.ts",
     "test:x": "bun run scripts/test-x-post.ts",
+    "x:test": "bun run scripts/test-x-post.ts",
     "telegram:login": "bun run scripts/telegram-login.ts",
     "test:mira": "bun run scripts/test-mira-prompt.ts",
     "ingest:test": "bun run scripts/test-ingest.ts",

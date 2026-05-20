@@ -2,7 +2,7 @@
 
 Автоматизированный конвейер: **новости IT → запрос к боту Mira через Telegram MTProto → пост с дисклеймером → публикация в Reddit и X** по расписанию (каждые ~5 часов).
 
-> **Статус (2026-05-20):** Фаза 0–4 **закрыты** (65 tests). POC: [`docs/telegram-mira-poc.md`](docs/telegram-mira-poc.md), runbook: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md). **Reddit publisher** — `src/publishers/reddit.ts`, `bun run reddit:test`. **X** — отложено (402). Дальше → **фаза 6** (scheduler).
+> **Статус (2026-05-20):** Фаза 0–4 **закрыты** (65 tests). **Фаза 5 (X)** — в работе: код publisher + тесты; live постинг заблокирован credits (402). Дальше → **фаза 6** (scheduler).
 
 ---
 
@@ -248,11 +248,24 @@ flowchart TB
 
 ---
 
-### Фаза 5 — X publisher (1 неделя) — ⏸ ОТЛОЖЕНО
+### Фаза 5 — X publisher (1 неделя) — ✅ CODE DONE (2026-05-20); live ⏸ credits
+
+**Декомпозиция (2026-05-20)**
+| Модуль | Файл | Статус |
+|--------|------|--------|
+| OAuth 1.0a credentials | `src/publishers/x-auth.ts` | ✅ |
+| POST /2/tweets | `src/publishers/x.ts` | ✅ |
+| `publishDraftToX` + DB hooks | `x.ts` | ✅ |
+| Smoke script | `scripts/test-x-post.ts` → `postTweet` | ✅ |
+| Unit tests (mock fetch) | `src/publishers/x.test.ts` (9 tests) | ✅ |
+| Barrel export | `src/publishers/index.ts` | ✅ |
+
+**Решения:** OAuth 1.0a (`oauth-1.0a`); `X_ENABLED=false` → skip без загрузки creds; guards как Reddit; текст = `draft.body` only; `insertPublished` platform `x`, subreddit `"x"`; **74 tests**.
+
 **Только X API v2** — `POST /2/tweets`  
 Документация: https://developer.x.com/x-api/posts/creation-of-a-post
 
-**Блокер:** Billing → Credits ($0) → 402 `CreditsDepleted`. Токены в `token/x_token.json` готовы; после пополнения → `bun run test:x`.
+**Блокер (live only):** Billing → Credits ($0) → 402 `CreditsDepleted`. Токены в `token/x_token.json` готовы; код с `X_ENABLED=false` по умолчанию; после пополнения → `X_ENABLED=true` + `bun run test:x`.
 
 **Аутентификация:**
 - Постинг: OAuth 1.0a (`consumer_*` + `access_*`) — см. `scripts/test-x-post.ts`
