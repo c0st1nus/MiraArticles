@@ -8,7 +8,8 @@
     "telegram:login": "bun run scripts/telegram-login.ts",
     "test:mira": "bun run scripts/test-mira-prompt.ts",
     "ingest:test": "bun run scripts/test-ingest.ts",
-    "pipeline:test": "PIPELINE_SKIP_MIRA=true PIPELINE_OFFLINE=true bun run scripts/test-pipeline.ts"
+    "pipeline:test": "PIPELINE_SKIP_MIRA=true PIPELINE_OFFLINE=true bun run scripts/test-pipeline.ts",
+    "reddit:test": "bun run scripts/test-reddit-post.ts"
   },
   "dependencies": {
     "elysia": "latest",

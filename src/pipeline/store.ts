@@ -240,6 +240,17 @@ export function newsSnapshotFromDraft(draft: PipelineDraft): Record<string, unkn
   };
 }
 
+export function updateDraftStatus(
+  db: Database,
+  id: number,
+  status: string,
+): void {
+  db.prepare("UPDATE drafts SET status = $status WHERE id = $id").run({
+    $id: id,
+    $status: status,
+  });
+}
+
 /** Close singleton (tests). */
 export function closeDatabase(): void {
   if (dbSingleton) {

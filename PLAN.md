@@ -2,7 +2,7 @@
 
 Автоматизированный конвейер: **новости IT → запрос к боту Mira через Telegram MTProto → пост с дисклеймером → публикация в Reddit и X** по расписанию (каждые ~5 часов).
 
-> **Статус (2026-05-20):** Фаза 0–3 **закрыты** (ingest + pipeline OK, 50 tests). POC: [`docs/telegram-mira-poc.md`](docs/telegram-mira-poc.md), runbook: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md). **Reddit** — OAuth готов. **X** — отложено (402). Дальше → **фаза 4** (`src/publishers/reddit.ts`).
+> **Статус (2026-05-20):** Фаза 0–4 **закрыты** (65 tests). POC: [`docs/telegram-mira-poc.md`](docs/telegram-mira-poc.md), runbook: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md). **Reddit publisher** — `src/publishers/reddit.ts`, `bun run reddit:test`. **X** — отложено (402). Дальше → **фаза 6** (scheduler).
 
 ---
 
@@ -197,7 +197,22 @@ flowchart TB
 
 ---
 
-### Фаза 4 — Reddit publisher (1–2 недели)
+### Фаза 4 — Reddit publisher (1–2 недели) — ✅ DONE (2026-05-20)
+
+**Декомпозиция (2026-05-20)**
+| Модуль | Файл | Статус |
+|--------|------|--------|
+| Типы publisher | `src/publishers/types.ts` | ✅ |
+| Token load + refresh | `src/publishers/reddit-auth.ts` | ✅ |
+| Submit self-post | `src/publishers/reddit.ts` | ✅ |
+| Post-submit hooks | `publishDraftToReddit` → `insertPublished`, `markPublished`, draft `published` | ✅ |
+| Smoke script | `scripts/test-reddit-post.ts` | ✅ |
+| Unit tests (mock fetch) | `src/publishers/reddit.test.ts` (15 tests) | ✅ |
+
+**Решения:** Devvit `token/reddit_token.json` (base64 bundle); `REDDIT_ENABLED=false` — skip; `HUMAN_APPROVE=true` → `validated` | `pending_approve`; `REDDIT_TEST_SR` для smoke; **не** autopost в `programming` без `ALLOW_R_PROGRAMMING`; после submit — `markPublished(url)` + SQLite `published` + draft `published`.
+
+**Фаза 4 — DONE.** Live smoke: `bun run reddit:test --dry-run` затем `bun run reddit:test`.
+
 **User OAuth (без своего app на prefs/apps)**
 - Источник токенов: `devvit login` → `~/.devvit/token` → локальная копия `token/reddit_token.json`.
 - `client_id`: Devvit CLI (`Bep8X2RRjuoyuxkKsKxFuQ`), `client_secret`: пустой.

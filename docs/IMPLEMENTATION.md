@@ -1,6 +1,6 @@
 # Старт имплементации (следующий чат)
 
-Фаза 0–3 **закрыты** (pipeline без live Mira в smoke). X **отложен** до покупки credits. Дальше: фаза 4 Reddit publisher.
+Фаза 0–4 **закрыты** (65 tests). X **отложен** до покупки credits. Дальше: фаза 6 scheduler (`src/scheduler/cron.ts`).
 
 ---
 
@@ -18,6 +18,7 @@
 | Mira bot POC | [`mira-bot-protocol.md`](mira-bot-protocol.md), [`telegram-mira-poc.md`](telegram-mira-poc.md) — **live test OK** |
 | Ingest (фаза 2) | `src/config/load.ts`, `src/news/*` (RSS/JSON, dedup, scoring, router, aggregator), `scripts/test-ingest.ts` |
 | Pipeline (фаза 3) | `src/pipeline/*` (prompt, disclosure, validator, sqlite store, `run-cycle`), `scripts/test-pipeline.ts` |
+| Reddit publisher (фаза 4) | `src/publishers/*` (`reddit-auth`, `reddit`, `publishDraftToReddit`), `scripts/test-reddit-post.ts`, `bun run reddit:test` |
 | Тест X | `bun run test:x` → `scripts/test-x-post.ts` |
 | Unsplash (опц.) | `src/media/`, [`unsplash.md`](unsplash.md) |
 
@@ -38,6 +39,24 @@ bun test
 ```
 
 См. [`telegram-mira-poc.md`](telegram-mira-poc.md) (GramJS quirks, env, FLOOD_WAIT).
+
+---
+
+## Фаза 4 (Reddit publisher) — закрыта
+
+Модули:
+
+- `src/publishers/types.ts`, `reddit-auth.ts`, `reddit.ts`, `index.ts`
+- `scripts/test-reddit-post.ts` — `--dry-run` (refresh only) или live submit
+- `publishDraftToReddit` — guards (`REDDIT_ENABLED`, status, programming), post-submit `insertPublished` + `markPublished` + draft `published`
+
+```bash
+bun test
+bun run reddit:test --dry-run   # token refresh, no post
+bun run reddit:test             # live → REDDIT_TEST_SR or u_c0s1nu7
+```
+
+Первый live e2e: профиль `u_c0s1nu7`, затем `r/selfhosted` после ручной проверки.
 
 ---
 
@@ -77,7 +96,7 @@ bun run ingest:test   # live fetch + scoring; см. feed errors в stdout
 ```
 1. ~~scripts/telegram-login.ts~~ + ~~src/mira/client.ts + parser~~ — ✅ фаза 1
 2. ~~src/config/load.ts + src/news/*~~ — ✅ фаза 2
-3. src/publishers/reddit.ts    — refresh + POST /api/submit
+3. ~~src/publishers/reddit.ts~~ — ✅ фаза 4: types, reddit-auth, reddit, index
 4. ~~src/pipeline/~~            — ✅ фаза 3: prompt, disclosure, validator, sqlite
 5. src/scheduler/cron.ts       — 5h, 1 sub per cycle, route по тегам
 6. src/publishers/x.ts         — заглушка if !X_ENABLED
@@ -134,9 +153,10 @@ MIRA_POLL_INTERVAL_MS=2500
 bun test
 bun run ingest:test     # фаза 2 smoke
 bun run pipeline:test   # фаза 3 smoke (offline)
+bun run reddit:test --dry-run   # фаза 4 smoke (проверяет токен без реального поста)
+bun run reddit:test             # фаза 4 live (требует REDDIT_ENABLED=true)
 bun run dev
 bun run test:x          # после credits
-# reddit refresh + submit — вынести в scripts/test-reddit-post.ts при имплементации
 ```
 
 ---
