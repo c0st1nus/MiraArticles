@@ -1,6 +1,6 @@
 # Старт имплементации (следующий чат)
 
-Фаза 0 (подготовка) **закрыта**. X **отложен** до покупки credits. Reddit + Telegram + ingest — в фокусе MVP.
+Фаза 0–3 **закрыты** (pipeline без live Mira в smoke). X **отложен** до покупки credits. Дальше: фаза 4 Reddit publisher.
 
 ---
 
@@ -16,6 +16,8 @@
 | X OAuth 1.0a | `token/x_token.json` — auth OK, **402 credits** → отложено |
 | Telegram | `token/telegram.json` (`api_id`, `api_hash`); сессия → `token/telegram.session` (см. §6 PLAN) |
 | Mira bot POC | [`mira-bot-protocol.md`](mira-bot-protocol.md), [`telegram-mira-poc.md`](telegram-mira-poc.md) — **live test OK** |
+| Ingest (фаза 2) | `src/config/load.ts`, `src/news/*` (RSS/JSON, dedup, scoring, router, aggregator), `scripts/test-ingest.ts` |
+| Pipeline (фаза 3) | `src/pipeline/*` (prompt, disclosure, validator, sqlite store, `run-cycle`), `scripts/test-pipeline.ts` |
 | Тест X | `bun run test:x` → `scripts/test-x-post.ts` |
 | Unsplash (опц.) | `src/media/`, [`unsplash.md`](unsplash.md) |
 
@@ -39,16 +41,46 @@ bun test
 
 ---
 
+## Фаза 3 (pipeline) — закрыта
+
+Модули:
+
+- `src/pipeline/types.ts`, `prompt.ts`, `disclosure.ts`, `validator.ts`, `store.ts`, `schema.sql`, `run-cycle.ts`, `index.ts`
+- `scripts/test-pipeline.ts`
+
+```bash
+bun test
+bun run pipeline:test   # offline: PIPELINE_OFFLINE + skip Mira; writes test DB under data/
+```
+
+`runPipelineCycle({ skipMira: false })` возвращает `needsMira: true` — вызывающий код (фаза 6) должен `sendPromptToMira` и обновить draft. `markPublished()` в `src/news/dedup.ts` — только после Reddit submit (фаза 4). Similarity — SQLite `published`, не JSON dedup.
+
+---
+
+## Фаза 2 (ingest) — закрыта
+
+Модули:
+
+- `src/config/load.ts` — `sources.yaml`, `subreddits.yaml`
+- `src/news/types.ts`, `fetch-rss.ts`, `fetch-json.ts`, `canonical-url.ts`, `dedup.ts`, `scoring.ts`, `router.ts`, `aggregator.ts`, `index.ts`
+- `scripts/test-ingest.ts`
+
+```bash
+bun test
+bun run ingest:test   # live fetch + scoring; см. feed errors в stdout
+```
+
+---
+
 ## Порядок имплементации (рекомендуемый)
 
 ```
 1. ~~scripts/telegram-login.ts~~ + ~~src/mira/client.ts + parser~~ — ✅ фаза 1
-2. src/config/load.ts          — читать config/*.yaml, token/* (без коммита)
+2. ~~src/config/load.ts + src/news/*~~ — ✅ фаза 2
 3. src/publishers/reddit.ts    — refresh + POST /api/submit
-4. src/news/aggregator.ts      — RSS из config/sources.yaml, dedup
-5. src/pipeline/               — prompt, disclosure, validator, sqlite
-6. src/scheduler/cron.ts       — 5h, 1 sub per cycle, route по тегам
-7. src/publishers/x.ts         — заглушка if !X_ENABLED
+4. ~~src/pipeline/~~            — ✅ фаза 3: prompt, disclosure, validator, sqlite
+5. src/scheduler/cron.ts       — 5h, 1 sub per cycle, route по тегам
+6. src/publishers/x.ts         — заглушка if !X_ENABLED
 ```
 
 Первый **e2e без Mira**: RSS → draft вручную в коде → Reddit `r/selfhosted` или `u_c0s1nu7`.  
@@ -99,6 +131,9 @@ MIRA_POLL_INTERVAL_MS=2500
 ## Команды для проверки
 
 ```bash
+bun test
+bun run ingest:test     # фаза 2 smoke
+bun run pipeline:test   # фаза 3 smoke (offline)
 bun run dev
 bun run test:x          # после credits
 # reddit refresh + submit — вынести в scripts/test-reddit-post.ts при имплементации

@@ -63,4 +63,4 @@ MIRA_POLL_INTERVAL_MS=2500      # backup poll getMessages; не ставить <
 
 ## Следующий шаг
 
-Фаза 2: [`IMPLEMENTATION.md`](IMPLEMENTATION.md) — RSS ingest, затем pipeline + Reddit.
+Фаза 2 закрыта. Дальше: [`GETTING_STARTED.md`](GETTING_STARTED.md) — pipeline + Reddit (фазы 3–4).

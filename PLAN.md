@@ -2,7 +2,7 @@
 
 Автоматизированный конвейер: **новости IT → запрос к боту Mira через Telegram MTProto → пост с дисклеймером → публикация в Reddit и X** по расписанию (каждые ~5 часов).
 
-> **Статус (2026-05-20):** Фаза 0–1 **закрыты** (login + `test:mira` OK). Доки POC: [`docs/telegram-mira-poc.md`](docs/telegram-mira-poc.md). **Reddit** — OAuth готов. **X** — отложено (402). Дальше → фаза 2.
+> **Статус (2026-05-20):** Фаза 0–3 **закрыты** (ingest + pipeline OK, 50 tests). POC: [`docs/telegram-mira-poc.md`](docs/telegram-mira-poc.md), runbook: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md). **Reddit** — OAuth готов. **X** — отложено (402). Дальше → **фаза 4** (`src/publishers/reddit.ts`).
 
 ---
 
@@ -102,7 +102,7 @@ flowchart TB
 - [x] `token/telegram.json` (api_id/hash); сессия → `token/telegram.session` при логине (фаза 1)
 - [ ] Разведка **@mira** — опционально до кода; шаблон в [`docs/mira-bot-protocol.md`](docs/mira-bot-protocol.md) §2
 
-**Артефакты:** [`docs/compliance.md`](docs/compliance.md), [`docs/mira-bot-protocol.md`](docs/mira-bot-protocol.md), [`docs/subreddit-rules.md`](docs/subreddit-rules.md), [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md).
+**Артефакты:** [`docs/compliance.md`](docs/compliance.md), [`docs/mira-bot-protocol.md`](docs/mira-bot-protocol.md), [`docs/subreddit-rules.md`](docs/subreddit-rules.md), [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md).
 
 **Фаза 0 — DONE.**
 
@@ -158,10 +158,10 @@ flowchart TB
 **Правило публикации:** **1 пост за цикл (5ч) → 1 саб** по маршрутизации тегов + ротация. См. `route_to_subreddit` в `config/sources.yaml`.
 
 **Задачи**
-- [ ] Агрегатор RSS/JSON → `{ title, url, summary, publishedAt, source, tags }`.
-- [ ] Scoring: Tier S first, свежесть < 6h, dedup 72h по canonical URL.
-- [ ] Router: тег → сабреддит (таблица в docs).
-- [ ] Промпт Mira: язык поста EN для Reddit, summary только из RSS (не full scrape).
+- [x] Агрегатор RSS/JSON → `{ title, url, summary, publishedAt, source, tags }`.
+- [x] Scoring: Tier S first, свежесть < 6h, dedup 72h по canonical URL.
+- [x] Router: тег → сабреддит (таблица в docs).
+- [x] Промпт Mira: язык поста EN для Reddit, summary только из RSS (не full scrape).
 
 **Авторское право**
 - Не копировать полный текст статей.
@@ -170,17 +170,30 @@ flowchart TB
 
 ---
 
-### Фаза 3 — Content pipeline (1 неделя)
+### Фаза 3 — Content pipeline (1 неделя) — ✅ DONE (2026-05-20)
+**Декомпозиция (2026-05-20)**
+| Модуль | Файл | Статус |
+|--------|------|--------|
+| Типы + оркестрация цикла | `src/pipeline/types.ts`, `run-cycle.ts` | ✅ |
+| Промпт Mira | `src/pipeline/prompt.ts` | ✅ |
+| Disclosure / post-process | `src/pipeline/disclosure.ts` | ✅ |
+| Validator (length, words, similarity) | `src/pipeline/validator.ts` | ✅ |
+| SQLite store | `src/pipeline/store.ts`, `schema.sql` | ✅ |
+| Smoke script | `scripts/test-pipeline.ts` | ✅ |
+| Тесты | `src/pipeline/*.test.ts` | ✅ |
+
+**Решения:** `bun:sqlite` + `DATABASE_URL` (default `file:./data/miraarticles.db`); similarity — Jaccard по словам, порог `SIMILARITY_MAX` (default 0.85); ref Mira только если `risk_promo` ∈ {low, medium}; EN для Reddit (`postLang`); `markPublished` (dedup JSON) — из фазы 4 после submit, pipeline пишет в `published`.
+
 **Задачи**
-- [ ] Prompt templates (RU/EN в зависимости от саба/аудитории).
-- [ ] Post-processor: вставка дисклеймера, UTM не нужен для `t.me` start param.
-- [ ] Linter правил:
+- [x] Prompt templates (RU/EN в зависимости от саба/аудитории).
+- [x] Post-processor: вставка дисклеймера, UTM не нужен для `t.me` start param.
+- [x] Linter правил:
   - длина (X 280/25k premium; Reddit title ≤300);
   - запрещённые слова;
   - **similarity check** с прошлыми постами (не постить «то же» в другой саб).
-- [ ] SQLite/Postgres: `drafts`, `published`, `errors`.
+- [x] SQLite: `drafts`, `published`, `errors`.
 
-**Опционально v1.5:** Telegram-уведомление «Approve?» с inline-кнопками перед публикацией.
+**Опционально v1.5:** Telegram-уведомление «Approve?» с inline-кнопками перед публикацией — **не в v1 фазы 3**.
 
 ---
 

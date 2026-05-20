@@ -6,12 +6,16 @@
     "dev": "bun run --watch src/index.ts",
     "test:x": "bun run scripts/test-x-post.ts",
     "telegram:login": "bun run scripts/telegram-login.ts",
-    "test:mira": "bun run scripts/test-mira-prompt.ts"
+    "test:mira": "bun run scripts/test-mira-prompt.ts",
+    "ingest:test": "bun run scripts/test-ingest.ts",
+    "pipeline:test": "PIPELINE_SKIP_MIRA=true PIPELINE_OFFLINE=true bun run scripts/test-pipeline.ts"
   },
   "dependencies": {
     "elysia": "latest",
+    "fast-xml-parser": "^5.8.0",
     "oauth-1.0a": "^2.2.6",
-    "telegram": "^2.26.22"
+    "telegram": "^2.26.22",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.0",
