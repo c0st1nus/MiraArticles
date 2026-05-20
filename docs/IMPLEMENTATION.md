@@ -1,6 +1,6 @@
 # Старт имплементации (следующий чат)
 
-Фаза 0–5 **закрыты** (74 tests). Live X posting **заблокирован** API credits (402) — код готов, `X_ENABLED=false` по умолчанию. Дальше: фаза 6 scheduler (`src/scheduler/cron.ts`).
+Фаза 0–6 **закрыты**. Live X posting **заблокирован** API credits (402) — код готов, `X_ENABLED=false` по умолчанию. Дальше: фаза 7 plugins.
 
 ---
 
@@ -100,6 +100,29 @@ bun run pipeline:test   # offline: PIPELINE_OFFLINE + skip Mira; writes test DB 
 
 ---
 
+## Фаза 6 (scheduler + E2E) — закрыта
+
+Модули:
+
+- `src/pipeline/finalize-mira.ts` — `finalizeDraftAfterMira` после ответа @mira
+- `src/scheduler/orchestrator.ts` — `runFullCycle` (ingest → pipeline → mira → finalize → publish)
+- `src/scheduler/cron.ts` — drift-safe `data/last_cycle.json`, `runSchedulerLoop`, `runOnce`
+- `src/index.ts` — `GET /health`, `POST /run-cycle`, scheduler on `SCHEDULER_ENABLED=true`
+- `scripts/run-cycle.ts` — CLI one-shot
+- `Dockerfile`, `docker-compose.yml`, `deploy/miraarticles.service`, [`RUNBOOK.md`](RUNBOOK.md)
+
+```bash
+bun test
+bun run cycle:run
+bun run cycle:run --dry-run --skip-mira
+bun run start
+curl http://localhost:3000/health
+```
+
+`runFullCycle`: уважает `PIPELINE_SKIP_MIRA`, `REDDIT_ENABLED`, `X_ENABLED`, `HUMAN_APPROVE` (stop at `pending_approve`), `ALLOW_R_PROGRAMMING`.
+
+---
+
 ## Фаза 2 (ingest) — закрыта
 
 Модули:
@@ -122,7 +145,7 @@ bun run ingest:test   # live fetch + scoring; см. feed errors в stdout
 2. ~~src/config/load.ts + src/news/*~~ — ✅ фаза 2
 3. ~~src/publishers/reddit.ts~~ — ✅ фаза 4: types, reddit-auth, reddit, index
 4. ~~src/pipeline/~~            — ✅ фаза 3: prompt, disclosure, validator, sqlite
-5. src/scheduler/cron.ts       — 5h, 1 sub per cycle, route по тегам
+5. ~~src/scheduler/*~~         — ✅ фаза 6: orchestrator, cron, Elysia, Docker
 6. ~~src/publishers/x.ts~~     — ✅ фаза 5: x-auth, x, publishDraftToX
 ```
 
@@ -179,6 +202,8 @@ bun run ingest:test     # фаза 2 smoke
 bun run pipeline:test   # фаза 3 smoke (offline)
 bun run reddit:test --dry-run   # фаза 4 smoke (проверяет токен без реального поста)
 bun run reddit:test             # фаза 4 live (требует REDDIT_ENABLED=true)
+bun run start
+bun run cycle:run
 bun run dev
 bun run x:test          # live postTweet (после credits)
 bun run test:x          # alias

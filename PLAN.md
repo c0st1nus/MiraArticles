@@ -2,7 +2,7 @@
 
 Автоматизированный конвейер: **новости IT → запрос к боту Mira через Telegram MTProto → пост с дисклеймером → публикация в Reddit и X** по расписанию (каждые ~5 часов).
 
-> **Статус (2026-05-20):** Фаза 0–4 **закрыты** (65 tests). **Фаза 5 (X)** — в работе: код publisher + тесты; live постинг заблокирован credits (402). Дальше → **фаза 6** (scheduler).
+> **Статус (2026-05-20):** Фаза 0–6 **закрыты**. Live X — credits (402). Фаза 7 — plugins.
 
 ---
 
@@ -34,8 +34,9 @@
 Источник: <URL оригинала>
 
 ---
-Частично подготовлено с помощью Mira (AI-ассистент в Telegram).
-Попробовать: https://t.me/mira?start=ref_1239398217
+*Disclosure:* AI-assisted post (drafted with Mira on Telegram).
+Mira (referral): https://t.me/mira?start=ref_1239398217
+*Referral link* — I may receive a bonus if you sign up.
 ```
 
 **X:** ссылку на источник + короткий дисклеймер; реф-ссылку чаще держать в **bio/pinned**, а не в каждом твите (снижает spam-score).  
@@ -296,11 +297,26 @@ flowchart TB
 
 ---
 
-### Фаза 6 — Scheduler & production (1 неделя)
-- [ ] Cron: `0 */5 * * *` (или drift-safe: «следующий запуск = last_success + 5h»).
-- [ ] Docker / systemd unit на VPS.
-- [ ] Health: `/health`, Prometheus или простой uptime ping.
-- [ ] Алерты: failed publish, Mira timeout, token expiry <7d.
+### Фаза 6 — Scheduler & production (1 неделя) — ✅ DONE (2026-05-20)
+
+**Декомпозиция (2026-05-20)**
+| Модуль | Файл | Статус |
+|--------|------|--------|
+| E2E orchestrator | `src/scheduler/orchestrator.ts` | ✅ |
+| Drift-safe scheduler | `src/scheduler/cron.ts` | ✅ |
+| Mira finalize helper | `src/pipeline/finalize-mira.ts` | ✅ |
+| Elysia health + manual run | `src/index.ts` | ✅ |
+| CLI one-shot | `scripts/run-cycle.ts` | ✅ |
+| Unit tests (mock) | `src/scheduler/orchestrator.test.ts` | ✅ |
+| Docker | `Dockerfile`, `docker-compose.yml` | ✅ |
+| Runbook | `docs/RUNBOOK.md` | ✅ |
+
+**Поток:** `runFullCycle()` → ingest (`runIngestCycle`) → `runPipelineCycle` → if `needsMira`: `sendPromptToMira` + `finalizeDraftAfterMira` → `publishDraftToReddit` (+ `publishDraftToX` if `X_ENABLED=true`) → state `data/last_cycle.json`.
+
+- [x] Cron: drift-safe `last_success + CRON_INTERVAL_HOURS` (default 5).
+- [x] Docker / systemd unit на VPS.
+- [x] Health: `GET /health`, `POST /run-cycle` (optional secret).
+- [x] Алерты: console + `errors` table; token expiry check stub.
 
 ---
 

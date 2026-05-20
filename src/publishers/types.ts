@@ -11,6 +11,8 @@ export interface RedditSubmitInput {
   title: string;
   text: string;
   kind?: "self";
+  flairId?: string;
+  flairText?: string;
 }
 
 export interface XTweetInput {

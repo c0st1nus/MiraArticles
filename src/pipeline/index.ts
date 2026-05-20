@@ -34,3 +34,9 @@ export {
   type InsertDraftInput,
 } from "./store";
 export { runPipelineCycle, type RunPipelineCycleOpts } from "./run-cycle";
+export {
+  finalizeDraftAfterMira,
+  finalizeStatus,
+  redditTitleFromCandidate,
+  type CandidateMeta,
+} from "./finalize-mira";

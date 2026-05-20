@@ -8,6 +8,9 @@ export interface DisclosureContext {
 }
 
 export function shouldIncludeRefLink(subreddit: string): boolean {
+  if (process.env.DISCLOSURE_ALWAYS_REF === "true") {
+    return true;
+  }
   const cfg = loadSubredditsConfig();
   const low = cfg.risk_promo.low ?? [];
   const medium = cfg.risk_promo.medium ?? [];
@@ -28,27 +31,20 @@ function sourceLine(url: string, en: boolean): string {
 function aiDisclaimerBlock(en: boolean, includeRef: boolean): string {
   const ref = refUrl();
   if (en) {
-    const lines = [
-      "---",
-      "Partially prepared with Mira (AI assistant on Telegram).",
-    ];
+    const lines = ["---", "*Disclosure:* AI-assisted post (drafted with Mira on Telegram)."];
     if (includeRef) {
-      lines.push(`Try: ${ref}`);
-      lines.push(
-        "The Mira link above is a referral link; I may receive a bonus if you sign up.",
-      );
+      lines.push(`Mira (referral): ${ref}`);
+      lines.push("*Referral link* — I may receive a bonus if you sign up.");
     }
     return lines.join("\n");
   }
   const lines = [
     "---",
-    "Частично подготовлено с помощью Mira (AI-ассистент в Telegram).",
+    "*Дисклеймер:* пост с AI-assist (черновик через Mira в Telegram).",
   ];
   if (includeRef) {
-    lines.push(`Попробовать: ${ref}`);
-    lines.push(
-      "Ссылка на Mira — реферальная; я могу получить бонус при регистрации.",
-    );
+    lines.push(`Mira (реф.): ${ref}`);
+    lines.push("*Реферальная ссылка* — возможен бонус при регистрации.");
   }
   return lines.join("\n");
 }

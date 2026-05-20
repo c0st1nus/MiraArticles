@@ -3,6 +3,8 @@
   "version": "1.0.50",
   "scripts": {
     "test": "bun test",
+    "start": "bun run src/index.ts",
+    "cycle:run": "bun run scripts/run-cycle.ts",
     "dev": "bun run --watch src/index.ts",
     "test:x": "bun run scripts/test-x-post.ts",
     "x:test": "bun run scripts/test-x-post.ts",

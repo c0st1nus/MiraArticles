@@ -8,6 +8,8 @@ subreddits:
   - name: linux
     url: https://www.reddit.com/r/linux/
     themes: [kernel, distros, drivers, desktop/server linux]
+    # r/linux: no "News" flair — use Distro News / Software Release (see link_flair_v2)
+    default_flair_text: "Distro News"
   - name: opensource
     url: https://www.reddit.com/r/opensource/
     themes: [licenses, FOSS projects, foundations, governance]
@@ -26,6 +28,7 @@ subreddits:
   - name: selfhosted
     url: https://www.reddit.com/r/selfhosted/
     themes: [homelab, docker, self-hosted apps, privacy stack]
+    default_flair_text: "Release (No AI)"
 
 # Риск promo/AI для автопоста с реф-ссылкой (субъективно, проверить sidebar)
 risk_promo:

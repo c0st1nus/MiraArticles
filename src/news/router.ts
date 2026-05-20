@@ -2,6 +2,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import type { SourcesConfig } from "../config/load";
 import { projectDataDir } from "../config/load";
+import {
+  getAllowedSubreddits,
+  isSubredditBlocked,
+} from "../publishers/reddit-policy";
 import type { ScoredItem, IngestCandidate } from "./types";
 
 export interface IngestState {
@@ -32,6 +36,42 @@ export function isProgrammingAllowed(): boolean {
   return process.env.ALLOW_R_PROGRAMMING === "true";
 }
 
+function isRoutableSubreddit(sub: string): boolean {
+  return !isSubredditBlocked(sub);
+}
+
+/** First tag→sub match ignoring blocked list (for ingest eligibility). */
+export function directSubredditForTags(
+  tags: string[],
+  routeMap: SourcesConfig["route_to_subreddit"],
+): string {
+  const allowProgramming = isProgrammingAllowed();
+
+  for (const tag of tags) {
+    if (!allowProgramming && tag === "programming") continue;
+    const sub = routeMap[tag];
+    if (sub) {
+      if (!allowProgramming && sub === "programming") continue;
+      return sub;
+    }
+  }
+
+  return routeMap.default ?? "linux";
+}
+
+export function directSubredditForItem(
+  item: ScoredItem,
+  routeMap: SourcesConfig["route_to_subreddit"],
+): string {
+  return directSubredditForTags(item.tags, routeMap);
+}
+
+function programmingFallback(routeMap: SourcesConfig["route_to_subreddit"]): string {
+  const tech = routeMap.technology ?? "technology";
+  if (isRoutableSubreddit(tech)) return tech;
+  return routeMap.default ?? "linux";
+}
+
 /** Map source tags to a subreddit name (without r/). */
 export function resolveSubredditForTags(
   tags: string[],
@@ -51,15 +91,19 @@ export function resolveSubredditForTags(
         skippedProgramming = true;
         continue;
       }
-      return sub;
+      if (isRoutableSubreddit(sub)) {
+        return sub;
+      }
+      continue;
     }
   }
 
   if (!allowProgramming && skippedProgramming) {
-    return routeMap.technology ?? "technology";
+    return programmingFallback(routeMap);
   }
 
-  return routeMap.default ?? "linux";
+  const fallback = routeMap.default ?? "linux";
+  return isRoutableSubreddit(fallback) ? fallback : fallback;
 }
 
 export function subredditForItem(
@@ -123,6 +167,26 @@ export function routeCandidate(
   };
 }
 
+function filterEligibleCandidates(
+  items: ScoredItem[],
+  routeMap: SourcesConfig["route_to_subreddit"],
+): ScoredItem[] {
+  let eligible = items.filter((i) => !isSubredditBlocked(directSubredditForItem(i, routeMap)));
+
+  const allowed = getAllowedSubreddits();
+  if (allowed && allowed.length > 0) {
+    const allowedSet = new Set(allowed);
+    const inAllowlist = eligible.filter((i) =>
+      allowedSet.has(directSubredditForItem(i, routeMap)),
+    );
+    if (inAllowlist.length > 0) {
+      eligible = inAllowlist;
+    }
+  }
+
+  return eligible;
+}
+
 export function pickBestCandidate(
   items: ScoredItem[],
   routeMap: SourcesConfig["route_to_subreddit"],
@@ -130,8 +194,20 @@ export function pickBestCandidate(
 ): IngestCandidate | null {
   if (items.length === 0) return null;
 
-  const maxScore = Math.max(...items.map((i) => i.score));
-  const top = items.filter((i) => i.score === maxScore);
-  const { item, subreddit } = pickSubredditForCandidates(top, routeMap, lastSubreddit);
-  return { ...item, subreddit };
+  const scores = [...new Set(items.map((i) => i.score))].sort((a, b) => b - a);
+
+  for (const score of scores) {
+    const tier = items.filter((i) => i.score === score);
+    const eligible = filterEligibleCandidates(tier, routeMap);
+    if (eligible.length === 0) continue;
+
+    const { item, subreddit } = pickSubredditForCandidates(
+      eligible,
+      routeMap,
+      lastSubreddit,
+    );
+    return { ...item, subreddit };
+  }
+
+  return null;
 }

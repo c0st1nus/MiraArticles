@@ -26,6 +26,10 @@ export interface SubredditEntry {
   name: string;
   url: string;
   themes: string[];
+  /** Reddit link flair template id (from link_flair_v2). Prefer default_flair_text if unsure. */
+  default_flair_id?: string;
+  /** Link flair label; matched to API list or sent as flair_text on submit. */
+  default_flair_text?: string;
 }
 
 export interface SubredditsConfig {

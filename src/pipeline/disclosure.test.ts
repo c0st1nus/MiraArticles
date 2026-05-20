@@ -1,11 +1,18 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { applyDisclosure, shouldIncludeRefLink } from "./disclosure";
 
 const ORIGINAL_REF = process.env.DISCLOSURE_REF_URL;
+const ORIGINAL_ALWAYS_REF = process.env.DISCLOSURE_ALWAYS_REF;
 
 afterEach(() => {
   if (ORIGINAL_REF === undefined) delete process.env.DISCLOSURE_REF_URL;
   else process.env.DISCLOSURE_REF_URL = ORIGINAL_REF;
+  if (ORIGINAL_ALWAYS_REF === undefined) delete process.env.DISCLOSURE_ALWAYS_REF;
+  else process.env.DISCLOSURE_ALWAYS_REF = ORIGINAL_ALWAYS_REF;
+});
+
+beforeEach(() => {
+  delete process.env.DISCLOSURE_ALWAYS_REF;
 });
 
 describe("shouldIncludeRefLink", () => {
@@ -20,6 +27,12 @@ describe("shouldIncludeRefLink", () => {
     expect(shouldIncludeRefLink("technology")).toBe(false);
     expect(shouldIncludeRefLink("programming")).toBe(false);
   });
+
+  test("DISCLOSURE_ALWAYS_REF overrides risk_promo", () => {
+    process.env.DISCLOSURE_ALWAYS_REF = "true";
+    expect(shouldIncludeRefLink("netsec")).toBe(true);
+    delete process.env.DISCLOSURE_ALWAYS_REF;
+  });
 });
 
 describe("applyDisclosure", () => {
@@ -32,9 +45,9 @@ describe("applyDisclosure", () => {
     });
     expect(out).toContain("Post body here.");
     expect(out).toContain("Source: https://news.test/article");
-    expect(out).toContain("Partially prepared with Mira");
+    expect(out).toContain("AI-assisted");
     expect(out).toContain("t.me/mira");
-    expect(out).toContain("referral");
+    expect(out).toContain("Referral");
   });
 
   test("netsec omits ref link in footer", () => {
@@ -45,8 +58,8 @@ describe("applyDisclosure", () => {
       postLang: "en",
     });
     expect(out).toContain("Source:");
-    expect(out).not.toContain("Try:");
-    expect(out).not.toContain("referral");
+    expect(out).not.toContain("Mira (referral)");
+    expect(out).not.toContain("Referral link");
   });
 
   test("uses custom DISCLOSURE_REF_URL when ref allowed", () => {

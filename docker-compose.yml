@@ -1,0 +1,10 @@
+services:
+  miraarticles:
+    build: .
+    env_file: .env
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - ./data:/app/data
+      - ./token:/app/token:ro
+    restart: unless-stopped
